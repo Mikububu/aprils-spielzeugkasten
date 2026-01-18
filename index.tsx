@@ -81,16 +81,16 @@ function getStyleColor(name: string): string {
 
 const els = {
   authBtn: document.getElementById('authBtn') as HTMLButtonElement,
-  slotA: document.getElementById('slotA'),
-  slotB: document.getElementById('slotB'),
-  removeA: document.getElementById('removeA'),
-  removeB: document.getElementById('removeB'),
+  slotA: document.getElementById('slotA') as HTMLElement,
+  slotB: document.getElementById('slotB') as HTMLElement,
+  removeA: document.getElementById('removeA') as HTMLElement,
+  removeB: document.getElementById('removeB') as HTMLElement,
   fileInput: document.getElementById('fileInput') as HTMLInputElement,
   promptInput: document.getElementById('promptInput') as HTMLInputElement,
   generateBtn: document.getElementById('generateBtn') as HTMLButtonElement,
-  finalImg: document.getElementById('finalImg') as HTMLImageElement,
+  finalImg: document.getElementById('clayImg') as HTMLImageElement,
   finalVideo: document.getElementById('finalVideo') as HTMLVideoElement,
-  placeholder: document.getElementById('placeholder'),
+  placeholder: document.getElementById('placeholder') as HTMLElement,
   actionInput: document.getElementById('actionInput') as HTMLInputElement,
   animateBtn: document.getElementById('animateBtn') as HTMLButtonElement,
   animBlock: document.getElementById('animBlock'),
@@ -295,17 +295,22 @@ function updateSlotUI(slot: 'a' | 'b') {
   const el = slot === 'a' ? els.slotA : els.slotB;
   const removeBtn = slot === 'a' ? els.removeA : els.removeB;
   const data = sourceImages[slot];
+  console.log('updateSlotUI:', slot, 'has data:', !!data, 'el:', !!el);
 
-  if (data) {
-    el!.style.backgroundImage = `url(data:image/png;base64,${data})`;
-    el!.classList.add('has-img');
-    el!.querySelector('.slot-label')!.textContent = "";
-    removeBtn!.classList.remove('hidden');
-  } else {
-    el!.style.backgroundImage = 'none';
-    el!.classList.remove('has-img');
-    el!.querySelector('.slot-label')!.textContent = `IMG ${slot.toUpperCase()}`;
-    removeBtn!.classList.add('hidden');
+  if (data && el) {
+    const dataUrl = `data:image/png;base64,${data}`;
+    console.log('Setting background image, data length:', data.length);
+    el.style.backgroundImage = `url(${dataUrl})`;
+    el.classList.add('has-img');
+    const label = el.querySelector('.slot-label');
+    if (label) label.textContent = "";
+    if (removeBtn) removeBtn.classList.remove('hidden');
+  } else if (el) {
+    el.style.backgroundImage = 'none';
+    el.classList.remove('has-img');
+    const label = el.querySelector('.slot-label');
+    if (label) label.textContent = `IMG ${slot.toUpperCase()}`;
+    if (removeBtn) removeBtn.classList.add('hidden');
   }
   if (sourceImages.a && sourceImages.b) {
     els.mergeControls?.classList.remove('hidden');
@@ -571,6 +576,7 @@ els.slotB!.addEventListener('click', (e) => {
 });
 
 function handleFileSelect(file: File, slot: 'a' | 'b') {
+  console.log('handleFileSelect called:', slot, file.name);
   if (!file.type.startsWith('image/')) {
     alert("ONLY IMAGE FILES ALLOWED!");
     return;
@@ -578,12 +584,14 @@ function handleFileSelect(file: File, slot: 'a' | 'b') {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const result = ev.target?.result as string;
+    console.log('File loaded, result length:', result.length);
     generatedBase64 = null;
     els.finalImg.classList.add('hidden');
     els.finalVideo.classList.add('hidden');
     els.placeholder!.classList.remove('hidden');
     const img = new Image();
     img.onload = () => {
+      console.log('Image loaded, dimensions:', img.width, img.height);
       const ratio = img.width / img.height;
       let newAspect = '1:1';
       if (ratio > 1.2) newAspect = '16:9';
@@ -594,6 +602,7 @@ function handleFileSelect(file: File, slot: 'a' | 'b') {
     const mime = result.match(/data:([^;]+);/)?.[1] || 'image/png';
     sourceMimes[slot] = mime;
     sourceImages[slot] = result.split(',')[1];
+    console.log('Calling updateSlotUI for slot:', slot);
     updateSlotUI(slot);
     updateAnimSection();
   };
@@ -645,40 +654,66 @@ els.fileInput.addEventListener('change', (e) => {
 
 els.generateBtn!.addEventListener('click', async () => {
   const userPrompt = els.promptInput.value.trim();
-  if (!userPrompt) {
-    alert("PLEASE ENTER A PROMPT!");
+  const hasSourceImage = sourceImages.a || sourceImages.b;
+  
+  if (!userPrompt && !hasSourceImage) {
+    alert("PLEASE ENTER A PROMPT OR UPLOAD A SOURCE IMAGE!");
     return;
   }
+  
   setBusy(true, "GENERATING IMAGE...", "MINIMAX AI");
   addCost(COST_IMAGE);
   try {
     const stylePrompt = styleConfig[selectedStyle] || '';
-    const fullPrompt = selectedStyle !== 'NONE' ? `${userPrompt}. ${stylePrompt}` : userPrompt;
+    const promptForApi = userPrompt || (hasSourceImage ? "Transform this image" : "Generate an image");
+    const fullPrompt = selectedStyle !== 'NONE' ? `${promptForApi}. ${stylePrompt}` : promptForApi;
     const aspectRatio = selectedAspect === '16:9' ? '16:9' : selectedAspect === '9:16' ? '9:16' : '1:1';
+    
+    const sourceImage = sourceImages.a || sourceImages.b || undefined;
+    console.log('Generate request:', { provider: 'minimax', type: 'image', prompt: fullPrompt.substring(0, 50), aspectRatio, hasSourceImage: !!sourceImage, sourceImageLength: sourceImage?.length });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const response = await fetch(`${API_URL}/api/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({
         provider: 'minimax',
         type: 'image',
         prompt: fullPrompt,
         aspectRatio: aspectRatio,
         sourceImage: sourceImages.a || sourceImages.b || undefined
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+    
     const result = await response.json();
+    
     if (result.success && result.data) {
       generatedBase64 = result.data.mediaBase64;
       generatedMimeType = result.data.mimeType || 'image/png';
-      finalizeImage(generatedBase64, generatedMimeType, userPrompt);
+      finalizeImage(generatedBase64, generatedMimeType, promptForApi);
     } else {
       throw new Error(result.error || 'Generation failed');
     }
   } catch (e: any) {
     console.error("Image Error:", e);
-    alert("IMAGE_ERROR: " + e.message);
+    if (e.name === 'AbortError') {
+      alert("IMAGE_ERROR: Request timed out after 60 seconds");
+    } else {
+      alert("IMAGE_ERROR: " + e.message);
+    }
   } finally {
     setBusy(false);
   }

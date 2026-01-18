@@ -39,7 +39,7 @@
             font-family: 'Archivo', sans-serif;
             color: var(--black);
             overflow-x: hidden;
-            overflow-y: scroll; /* Always allow scroll */
+            overflow-y: scroll;
         }
 
         .hidden { display: none !important; }
@@ -53,7 +53,7 @@
             box-sizing: border-box;
             position: relative;
             z-index: 1;
-            align-items: flex-start; /* Important for sticky */
+            align-items: flex-start;
         }
 
         aside {
@@ -120,7 +120,6 @@
         }
         .neo-input:focus { background: var(--white) !important; border-color: var(--yellow); box-shadow: 0 0 0 4px var(--yellow); }
 
-        /* Button-like styles for recipes */
         .recipe-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
         .recipe-card {
             border: var(--border) solid var(--black);
@@ -197,7 +196,6 @@
         .aspect-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .aspect-box {
             border: var(--border) solid var(--black);
-            background: var(--input-bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 10px; cursor: pointer; transition: all 0.1s;
             box-shadow: 2px 2px 0px var(--black);
@@ -223,6 +221,12 @@
         .main-action span { font-size: 11px; margin-top: 4px; opacity: 0.7; }
         .main-action:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0px var(--black); }
         .main-action:disabled { background: #888; cursor: not-allowed; box-shadow: none; transform: none; }
+        .main-action.loading-pulse { animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
 
         .sub-action {
             background: var(--cyan);
@@ -238,6 +242,7 @@
         }
         .sub-action span { font-size: 10px; margin-top: 4px; opacity: 0.7; }
         .sub-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        .sub-action.loading-pulse { animation: pulse 1s infinite; }
 
         .gallery-container {
             display: grid;
@@ -280,11 +285,9 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            
             width: 100%;
             position: sticky;
             top: 20px;
-            
             align-items: center;
             justify-content: center;
             box-sizing: border-box;
@@ -325,8 +328,7 @@
             min-height: 60px;
             resize: none;
         }
-        
-        /* Account / Billing Block */
+
         .account-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -341,88 +343,48 @@
         }
         .stat-val { font-family: 'Archivo Black', sans-serif; font-size: 14px; color: var(--black); }
         .stat-lbl { font-size: 9px; color: #666; font-weight: 800; }
-        
-        .billing-link {
-            text-decoration: none;
-            background: var(--black);
-            color: var(--white);
-            font-size: 10px;
-            text-align: center;
-            padding: 6px;
-            display: block;
-            font-weight: 800;
-            text-transform: uppercase;
-            border: 2px solid var(--black);
-        }
-        .billing-link:hover { background: var(--white); color: var(--black); }
 
-        /* Video Toggles */
-        .video-toggles {
-            display: flex; gap: 8px; margin-bottom: 8px; margin-top: 8px;
+        .merge-controls {
+            display: flex; gap: 8px; margin-top: 8px;
         }
-        .toggle-btn {
+        .merge-btn {
             flex: 1;
             border: 2px solid var(--black);
             background: var(--white);
             padding: 6px;
             font-size: 10px; font-weight: 800; text-transform: uppercase;
             cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center;
-            opacity: 0.6;
-            transition: 0.2s;
         }
-        .toggle-btn.active {
-            background: var(--yellow);
-            opacity: 1;
+        .merge-btn.active {
+            background: var(--cyan);
             box-shadow: 2px 2px 0 var(--black);
-            transform: translate(-1px, -1px);
-        }
-        .toggle-btn.disabled { cursor: not-allowed; opacity: 0.3; }
-
-        /* Guide Steps */
-        .guide-steps {
-            display: flex; gap: 30px; margin-top: 20px;
-            opacity: 0.6;
-        }
-        .step {
-            display: flex; flex-direction: column; align-items: center; gap: 5px;
-        }
-        .step-num {
-            background: var(--black); color: var(--white);
-            width: 24px; height: 24px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 800;
-        }
-        .step-txt {
-            font-size: 12px; font-weight: 800; text-transform: uppercase;
         }
     </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div class="app-shell">
         <aside>
+            <div class="neo-block brand">
+                <h1>April's Spielzeugkasten</h1>
+                <button id="authBtn">ANONYMOUS</button>
+            </div>
+            
             <div class="neo-block">
-                <div class="brand">
-                    <h1>April's Toy Box</h1>
-                    <button id="authBtn">Login</button>
-                </div>
                 <div class="account-stats">
                     <div class="stat-box">
                         <span class="stat-val" id="sessionCostDisplay">$0.00</span>
-                        <span class="stat-lbl">SESSION COST</span>
+                        <span class="stat-lbl">SESSION COST (EST)</span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-val" style="color: var(--green);">PAID KEY</span>
-                        <span class="stat-lbl">API STATUS</span>
+                        <span class="stat-val" style="color: var(--green);">MINIMAX</span>
+                        <span class="stat-lbl">PROVIDER</span>
                     </div>
                 </div>
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" class="billing-link">Billing Info & Pricing</a>
             </div>
 
             <div class="neo-block">
-                <div class="label">Step 1: The Clay</div>
+                <div class="label">Step 1: Source Image (Optional)</div>
                 <div class="source-grid">
                     <div class="source-slot" id="slotA">
                         <div class="slot-label">IMG A</div>
@@ -434,80 +396,47 @@
                     </div>
                     <input type="file" id="fileInput" accept="image/*" hidden />
                 </div>
-                
-                <div id="mergeControls" class="video-toggles hidden" style="margin-top:4px;">
-                    <div class="toggle-btn active" id="btnMergeBlend">BLEND<br><span style="font-size:8px">MERGE TRAITS</span></div>
-                    <div class="toggle-btn" id="btnMergeCouple">COUPLE<br><span style="font-size:8px">SIDE BY SIDE</span></div>
+                <div class="merge-controls hidden" id="mergeControls">
+                    <button class="merge-btn active" id="btnMergeBlend">BLEND</button>
+                    <button class="merge-btn" id="btnMergeCouple">COUPLE</button>
                 </div>
             </div>
 
             <div class="neo-block">
-                <div class="label">Step 2: AI Model</div>
-                <div class="recipe-grid" id="modelSelector">
-                    <!-- JS Injected -->
-                </div>
-                <div style="font-size:9px; font-weight:800; margin-top:4px; padding:4px; background:#f9f9f9;">
-                    <div id="modelInfo">Select a model provider above</div>
-                </div>
+                <div class="label">Step 2: Describe What You Want</div>
+                <textarea id="promptInput" class="neo-textarea" placeholder="Enter your prompt here..."></textarea>
             </div>
 
             <div class="neo-block">
-                <div class="label">Step 3: The Style</div>
-                <div class="recipe-grid" id="recipeSelector">
-                    <!-- JS Injected -->
-                </div>
-                <input type="text" class="neo-input" id="styleNameInput" placeholder="STYLE NAME" style="font-size: 12px; padding: 8px; margin-bottom: 4px;">
-                <textarea class="neo-textarea style-editor" id="stylePromptEditor" placeholder="Style prompt..."></textarea>
-                <div style="display:flex; justify-content:space-between; margin-top:4px;">
-                    <span style="font-size:9px; font-weight:800; cursor:pointer; text-decoration:underline;" id="resetStylesBtn">RESET DEFAULTS</span>
-                </div>
+                <div class="label">Step 3: Select Style</div>
+                <div class="recipe-grid" id="recipeSelector"></div>
+                <input type="text" class="neo-input style-editor" id="styleNameInput" placeholder="STYLE NAME">
+                <textarea class="neo-textarea style-editor" id="stylePromptEditor" placeholder="Style description..."></textarea>
+                <button class="sub-action" id="resetStylesBtn">RESET DEFAULTS</button>
             </div>
 
             <div class="neo-block">
-                <div class="label">Step 4: Sculpt</div>
-                <textarea class="neo-textarea" id="promptInput" placeholder="Describe the character or scene..."></textarea>
+                <div class="label">Step 4: Aspect Ratio</div>
                 <div class="aspect-grid" id="aspectSelector">
-                    <div class="aspect-box active" data-val="16:9">
-                        <div class="frame" style="width:24px; height:14px;"></div>
-                        <span>16:9</span>
-                    </div>
-                    <div class="aspect-box" data-val="1:1">
-                        <div class="frame" style="width:18px; height:18px;"></div>
-                        <span>1:1</span>
-                    </div>
-                    <div class="aspect-box" data-val="9:16">
-                        <div class="frame" style="width:14px; height:24px;"></div>
-                        <span>9:16</span>
-                    </div>
+                    <div class="aspect-box" data-val="16:9"><div class="frame" style="width:48px;height:27px"></div><span>16:9</span></div>
+                    <div class="aspect-box active" data-val="1:1"><div class="frame" style="width:32px;height:32px"></div><span>1:1</span></div>
+                    <div class="aspect-box" data-val="9:16"><div class="frame" style="width:27px;height:48px"></div><span>9:16</span></div>
                 </div>
-                <button class="main-action" id="generateBtn">
-                    SCULPT
-                    <span id="imgCostLabel">(EST. ~$0.04)</span>
-                </button>
+                <button class="main-action" id="generateBtn">GENERATE IMAGE</button>
+                <div style="text-align: center; font-size: 10px; margin-top: 4px;" id="imgCostLabel">(EST. ~$0.02)</div>
             </div>
 
             <div class="neo-block">
-                <div class="label">Step 5: Animate</div>
-                <textarea class="neo-textarea" id="actionInput" style="min-height: 50px;" placeholder="Describe the movement (e.g. 'The character waves hello')..."></textarea>
-                
-                <div class="video-toggles">
-                    <div class="toggle-btn" id="toggleExtend">EXTEND<br><span style="font-size:8px">+7 SECONDS</span></div>
-                    <div class="toggle-btn active" id="toggleAudio">AUDIO: MUTED<br><span style="font-size:8px">(DEFAULT)</span></div>
-                </div>
-
-                <div id="animBlock">
-                    <div id="animHint" style="font-size:9px; font-weight:800; margin-bottom:4px; text-align:center;">TEXT-TO-IMAGE: USING IMAGEN 3 MODEL</div>
-                    <button class="sub-action" id="animateBtn">
-                        SCULPT_WITH_IMAGEN
-                        <span id="vidCostLabel">(EST. ~$0.24)</span>
-                    </button>
-                </div>
+                <div class="label">Step 5: Animate (Optional)</div>
+                <textarea id="actionInput" class="neo-textarea" placeholder="Describe the motion..."></textarea>
+                <button class="sub-action" id="animateBtn">VIDEO_FROM_IMAGE</button>
+                <div id="animHint" style="font-size: 10px; margin-top: 4px; color: var(--yellow);">TEXT-TO-IMAGE: MINIMAX AI</div>
+                <div style="text-align: center; font-size: 10px; margin-top: 4px;" id="vidCostLabel">(EST. ~$0.15)</div>
             </div>
-            
-            <div class="neo-block" style="flex: 1;">
-                 <div class="label">Gallery</div>
-                 <div class="gallery-container" id="galleryList">
-                 </div>
+
+            <div class="neo-block">
+                <div class="label">Gallery</div>
+                <div class="gallery-container" id="galleryList"></div>
             </div>
         </aside>
 
@@ -515,17 +444,14 @@
             <div class="result-stage">
                 <div id="artboardOverlay">
                     <div style="font-size: 40px; margin-bottom: 10px;">⏳</div>
-                    <div id="loadingTitle" style="font-size: 24px; color: var(--white);">SCULPTING...</div>
-                    <div id="statusText" style="font-size: 14px; margin-top: 10px;">PREPARING CLAY...</div>
+                    <div id="loadingTitle" style="font-size: 24px; color: var(--white);">GENERATING...</div>
+                    <div id="statusText" style="font-size: 14px; margin-top: 10px;">PLEASE WAIT...</div>
                 </div>
                 <div id="placeholder" style="width: 100%; height: 300px; background: #eee; display: flex; align-items: center; justify-content: center; border: 4px dashed #ccc; color: #aaa; font-weight: 800; font-size: 24px;">
-                    STAGE EMPTY
+                    UPLOAD AN IMAGE OR ENTER A PROMPT
                 </div>
-                <img id="clayImg" class="hidden" alt="Generated Clay" />
+                <img id="clayImg" class="hidden" alt="Generated Image" />
                 <video id="finalVideo" class="hidden" playsinline loop controls></video>
-                <div class="guide-steps" id="guideOverlay">
-                   <!-- Visual decorative guide -->
-                </div>
             </div>
         </main>
     </div>
