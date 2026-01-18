@@ -1,0 +1,29 @@
+# Dockerfile for Runpod Video Generation (CogVideoX/AnimateDiff - Uncensored)
+
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    diffusers[torch] \
+    transformers \
+    accelerate \
+    safetensors \
+    xformers \
+    imageio[ffmpeg] \
+    imageio-ffmpeg \
+    runpod
+
+# Copy handler
+COPY video-handler.py /app/handler.py
+
+# Set entrypoint
+CMD ["python", "-u", "handler.py"]

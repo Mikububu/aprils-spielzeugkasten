@@ -1,0 +1,1 @@
+// Deprecated in favor of Vanilla JS implementation in index.tsx

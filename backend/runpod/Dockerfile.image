@@ -1,0 +1,24 @@
+# Dockerfile for Runpod Image Generation (SDXL/Flux - Uncensored)
+
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    diffusers[torch] \
+    transformers \
+    accelerate \
+    safetensors \
+    xformers \
+    runpod
+
+# Copy handler
+COPY image-handler.py /app/handler.py
+
+# Pre-download model (optional, speeds up cold starts)
+# Uncomment if you want to bake the model into the image
+# RUN python -c "from diffusers import StableDiffusionXLPipeline; StableDiffusionXLPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype='float16', variant='fp16')"
+
+# Set entrypoint
+CMD ["python", "-u", "handler.py"]

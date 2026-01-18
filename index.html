@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script type="importmap">
+    {
+      "imports": {
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.39.0"
+      }
+    }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APRILS SPIELZEUGKASTEN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@600;800&display=swap');
+
+        :root {
+            --yellow: #FFF000;
+            --cyan: #00F0FF;
+            --green: #00FF41;
+            --red: #FF3131;
+            --white: #FFFFFF;
+            --black: #000000;
+            --bg: #e0e0e0; 
+            --grid-line: #d0d0d0;
+            --input-bg: #E8E8E8;
+            --border: 4px;
+        }
+
+        body, html {
+            margin: 0; padding: 0; 
+            min-height: 100vh;
+            width: 100vw;
+            background-color: var(--bg);
+            background-image: 
+                linear-gradient(var(--grid-line) 2px, transparent 2px),
+                linear-gradient(90deg, var(--grid-line) 2px, transparent 2px);
+            background-size: 80px 80px; 
+            font-family: 'Archivo', sans-serif;
+            color: var(--black);
+            overflow-x: hidden;
+            overflow-y: scroll; /* Always allow scroll */
+        }
+
+        .hidden { display: none !important; }
+
+        .app-shell {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+            align-items: flex-start; /* Important for sticky */
+        }
+
+        aside {
+            flex: 0 0 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: auto;
+            padding-right: 0;
+            margin-bottom: 40px;
+        }
+
+        .neo-block {
+            background: var(--white);
+            border: var(--border) solid var(--black);
+            box-shadow: 4px 4px 0px var(--black);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            transition: opacity 0.3s;
+            flex-shrink: 0; 
+        }
+
+        .brand { background: var(--black); color: var(--white); padding: 12px 16px; box-shadow: 4px 4px 0px var(--cyan); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { font-family: 'Archivo Black', sans-serif; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: -1px; }
+        .label { font-family: 'Archivo Black', sans-serif; font-size: 11px; text-transform: uppercase; background: var(--black); color: var(--white); padding: 3px 10px; width: fit-content; margin-bottom: 4px; }
+
+        #authBtn {
+            background: var(--yellow);
+            color: var(--black);
+            border: 2px solid var(--white);
+            padding: 4px 8px;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        #authBtn:hover { background: var(--white); }
+
+        .neo-textarea {
+            border: var(--border) solid var(--black);
+            padding: 15px;
+            font-family: inherit; font-weight: 800; font-size: 18px;
+            outline: none; width: 100%; box-sizing: border-box;
+            background: var(--input-bg) !important;
+            color: #000000 !important;
+            resize: vertical;
+            min-height: 80px;
+            transition: all 0.2s;
+            line-height: 1.2;
+        }
+        .neo-textarea:focus { background: var(--white) !important; border-color: var(--yellow); color: #000000 !important; box-shadow: 0 0 0 4px var(--yellow); }
+
+        .neo-input {
+            border: var(--border) solid var(--black);
+            padding: 12px;
+            font-family: inherit; font-weight: 800; font-size: 16px;
+            outline: none; width: 100%; box-sizing: border-box;
+            background: var(--input-bg) !important;
+            color: #000000 !important;
+            transition: all 0.2s;
+        }
+        .neo-input:focus { background: var(--white) !important; border-color: var(--yellow); box-shadow: 0 0 0 4px var(--yellow); }
+
+        /* Button-like styles for recipes */
+        .recipe-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .recipe-card {
+            border: var(--border) solid var(--black);
+            cursor: pointer; position: relative; overflow: hidden;
+            background: #eee; box-shadow: 2px 2px 0px var(--black);
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px 14px;
+            min-width: 40px;
+            flex-shrink: 0;
+        }
+        .recipe-card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0px var(--black); z-index: 2; }
+        .recipe-card.active { border-color: var(--black); box-shadow: 0px 0px 0px var(--black); transform: translate(2px, 2px); }
+        .recipe-card span {
+            background: transparent; color: var(--black);
+            font-size: 12px; font-weight: 800; font-family: 'Archivo Black', sans-serif;
+            text-transform: uppercase; word-break: normal; white-space: nowrap;
+        }
+        .recipe-card.add-new { background: var(--black) !important; color: var(--white); min-width: 40px; }
+        .recipe-card.add-new span { color: var(--white); font-size: 16px; }
+
+        .style-editor {
+            font-size: 12px;
+            min-height: 60px;
+            padding: 8px;
+            margin-top: 4px;
+            border-width: 2px;
+        }
+
+        .source-grid { display: flex; gap: 10px; }
+        .source-slot {
+            flex: 1;
+            border: var(--border) dashed var(--black);
+            background: var(--input-bg);
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            transition: 0.2s;
+        }
+        .source-slot:hover { border-color: var(--yellow); }
+        .source-slot.has-img { border-style: solid; }
+        .source-slot .slot-label { font-size: 14px; font-weight: 800; pointer-events: none; }
+        
+        .source-slot.drag-active {
+            border-style: solid;
+            border-color: var(--cyan);
+            background-color: #fff;
+            transform: scale(1.02);
+            box-shadow: 0 0 15px var(--cyan);
+            z-index: 10;
+        }
+
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: var(--red); color: var(--white);
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; cursor: pointer;
+            border: 2px solid var(--black);
+            font-size: 14px;
+            z-index: 10;
+            box-shadow: 2px 2px 0 var(--black);
+        }
+        .remove-btn:hover { transform: scale(1.1); }
+
+        .aspect-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .aspect-box {
+            border: var(--border) solid var(--black);
+            background: var(--input-bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px; cursor: pointer; transition: all 0.1s;
+            box-shadow: 2px 2px 0px var(--black);
+        }
+        .aspect-box.active { background: var(--yellow); transform: translate(1px, 1px); box-shadow: 0px 0px 0px var(--black); }
+        .aspect-box .frame { border: 2px solid var(--black); background: #ccc; margin-bottom: 4px; }
+        .aspect-box span { font-weight: 800; font-size: 11px; color: var(--black); }
+
+        .main-action {
+            background: var(--green);
+            border: var(--border) solid var(--black);
+            box-shadow: 4px 4px 0px var(--black);
+            font-family: 'Archivo Black', sans-serif; font-size: 22px;
+            text-transform: uppercase; padding: 22px; cursor: pointer;
+            width: 100%; transition: all 0.1s;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            color: var(--black);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .main-action span { font-size: 11px; margin-top: 4px; opacity: 0.7; }
+        .main-action:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0px var(--black); }
+        .main-action:disabled { background: #888; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .sub-action {
+            background: var(--cyan);
+            border: var(--border) solid var(--black);
+            box-shadow: 3px 3px 0px var(--black);
+            font-family: 'Archivo Black', sans-serif; font-size: 16px;
+            text-transform: uppercase; padding: 14px; cursor: pointer;
+            width: 100%; transition: all 0.1s;
+            color: var(--black);
+            margin-top: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .sub-action span { font-size: 10px; margin-top: 4px; opacity: 0.7; }
+        .sub-action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .gallery-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 4px;
+        }
+        .gallery-item {
+            border: 2px solid var(--black);
+            aspect-ratio: 1;
+            cursor: pointer;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            background-color: #eee;
+            transition: 0.1s;
+        }
+        .gallery-item:hover { border-color: var(--yellow); transform: scale(1.05); z-index: 2; }
+        .gallery-item.video-type::after {
+            content: '▶';
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: white; text-shadow: 1px 1px 2px black; font-size: 14px;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background: transparent;
+            position: relative;
+        }
+
+        .result-stage {
+            background: var(--white);
+            border: var(--border) solid var(--black);
+            box-shadow: 12px 12px 0px var(--black);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            
+            width: 100%;
+            position: sticky;
+            top: 20px;
+            
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        #clayImg, #finalVideo {
+            width: 100%;
+            height: auto;
+            max-height: 70vh;
+            object-fit: contain;
+            border: var(--border) solid var(--black);
+            box-shadow: 8px 8px 0px var(--black);
+            background: #000;
+            display: block;
+        }
+
+        #artboardOverlay {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.92);
+            color: var(--yellow);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 100; font-family: 'Archivo Black', sans-serif;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        #actionInput {
+            padding: 12px; 
+            border: var(--border) solid var(--black);
+            font-family: inherit; font-weight: 800; font-size: 16px;
+            background-color: #ffffff !important; 
+            color: #000000 !important;
+            width: 100%;
+            outline: none;
+            box-sizing: border-box;
+            min-height: 60px;
+            resize: none;
+        }
+        
+        /* Account / Billing Block */
+        .account-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .stat-box {
+            background: var(--input-bg);
+            padding: 8px;
+            border: 2px solid var(--black);
+            display: flex; flex-direction: column; align-items: flex-start;
+        }
+        .stat-val { font-family: 'Archivo Black', sans-serif; font-size: 14px; color: var(--black); }
+        .stat-lbl { font-size: 9px; color: #666; font-weight: 800; }
+        
+        .billing-link {
+            text-decoration: none;
+            background: var(--black);
+            color: var(--white);
+            font-size: 10px;
+            text-align: center;
+            padding: 6px;
+            display: block;
+            font-weight: 800;
+            text-transform: uppercase;
+            border: 2px solid var(--black);
+        }
+        .billing-link:hover { background: var(--white); color: var(--black); }
+
+        /* Video Toggles */
+        .video-toggles {
+            display: flex; gap: 8px; margin-bottom: 8px; margin-top: 8px;
+        }
+        .toggle-btn {
+            flex: 1;
+            border: 2px solid var(--black);
+            background: var(--white);
+            padding: 6px;
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center;
+            opacity: 0.6;
+            transition: 0.2s;
+        }
+        .toggle-btn.active {
+            background: var(--yellow);
+            opacity: 1;
+            box-shadow: 2px 2px 0 var(--black);
+            transform: translate(-1px, -1px);
+        }
+        .toggle-btn.disabled { cursor: not-allowed; opacity: 0.3; }
+
+        /* Guide Steps */
+        .guide-steps {
+            display: flex; gap: 30px; margin-top: 20px;
+            opacity: 0.6;
+        }
+        .step {
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .step-num {
+            background: var(--black); color: var(--white);
+            width: 24px; height: 24px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 800;
+        }
+        .step-txt {
+            font-size: 12px; font-weight: 800; text-transform: uppercase;
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside>
+            <div class="neo-block">
+                <div class="brand">
+                    <h1>April's Toy Box</h1>
+                    <button id="authBtn">Login</button>
+                </div>
+                <div class="account-stats">
+                    <div class="stat-box">
+                        <span class="stat-val" id="sessionCostDisplay">$0.00</span>
+                        <span class="stat-lbl">SESSION COST</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" style="color: var(--green);">PAID KEY</span>
+                        <span class="stat-lbl">API STATUS</span>
+                    </div>
+                </div>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" class="billing-link">Billing Info & Pricing</a>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 1: The Clay</div>
+                <div class="source-grid">
+                    <div class="source-slot" id="slotA">
+                        <div class="slot-label">IMG A</div>
+                        <div class="remove-btn hidden" id="removeA">X</div>
+                    </div>
+                    <div class="source-slot" id="slotB">
+                        <div class="slot-label">IMG B</div>
+                        <div class="remove-btn hidden" id="removeB">X</div>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" hidden />
+                </div>
+                
+                <div id="mergeControls" class="video-toggles hidden" style="margin-top:4px;">
+                    <div class="toggle-btn active" id="btnMergeBlend">BLEND<br><span style="font-size:8px">MERGE TRAITS</span></div>
+                    <div class="toggle-btn" id="btnMergeCouple">COUPLE<br><span style="font-size:8px">SIDE BY SIDE</span></div>
+                </div>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 2: AI Model</div>
+                <div class="recipe-grid" id="modelSelector">
+                    <!-- JS Injected -->
+                </div>
+                <div style="font-size:9px; font-weight:800; margin-top:4px; padding:4px; background:#f9f9f9;">
+                    <div id="modelInfo">Select a model provider above</div>
+                </div>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 3: The Style</div>
+                <div class="recipe-grid" id="recipeSelector">
+                    <!-- JS Injected -->
+                </div>
+                <input type="text" class="neo-input" id="styleNameInput" placeholder="STYLE NAME" style="font-size: 12px; padding: 8px; margin-bottom: 4px;">
+                <textarea class="neo-textarea style-editor" id="stylePromptEditor" placeholder="Style prompt..."></textarea>
+                <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                    <span style="font-size:9px; font-weight:800; cursor:pointer; text-decoration:underline;" id="resetStylesBtn">RESET DEFAULTS</span>
+                </div>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 4: Sculpt</div>
+                <textarea class="neo-textarea" id="promptInput" placeholder="Describe the character or scene..."></textarea>
+                <div class="aspect-grid" id="aspectSelector">
+                    <div class="aspect-box active" data-val="16:9">
+                        <div class="frame" style="width:24px; height:14px;"></div>
+                        <span>16:9</span>
+                    </div>
+                    <div class="aspect-box" data-val="1:1">
+                        <div class="frame" style="width:18px; height:18px;"></div>
+                        <span>1:1</span>
+                    </div>
+                    <div class="aspect-box" data-val="9:16">
+                        <div class="frame" style="width:14px; height:24px;"></div>
+                        <span>9:16</span>
+                    </div>
+                </div>
+                <button class="main-action" id="generateBtn">
+                    SCULPT
+                    <span id="imgCostLabel">(EST. ~$0.04)</span>
+                </button>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 5: Animate</div>
+                <textarea class="neo-textarea" id="actionInput" style="min-height: 50px;" placeholder="Describe the movement (e.g. 'The character waves hello')..."></textarea>
+                
+                <div class="video-toggles">
+                    <div class="toggle-btn" id="toggleExtend">EXTEND<br><span style="font-size:8px">+7 SECONDS</span></div>
+                    <div class="toggle-btn active" id="toggleAudio">AUDIO: MUTED<br><span style="font-size:8px">(DEFAULT)</span></div>
+                </div>
+
+                <div id="animBlock">
+                    <div id="animHint" style="font-size:9px; font-weight:800; margin-bottom:4px; text-align:center;">TEXT-TO-IMAGE: USING IMAGEN 3 MODEL</div>
+                    <button class="sub-action" id="animateBtn">
+                        SCULPT_WITH_IMAGEN
+                        <span id="vidCostLabel">(EST. ~$0.24)</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="neo-block" style="flex: 1;">
+                 <div class="label">Gallery</div>
+                 <div class="gallery-container" id="galleryList">
+                 </div>
+            </div>
+        </aside>
+
+        <main>
+            <div class="result-stage">
+                <div id="artboardOverlay">
+                    <div style="font-size: 40px; margin-bottom: 10px;">⏳</div>
+                    <div id="loadingTitle" style="font-size: 24px; color: var(--white);">SCULPTING...</div>
+                    <div id="statusText" style="font-size: 14px; margin-top: 10px;">PREPARING CLAY...</div>
+                </div>
+                <div id="placeholder" style="width: 100%; height: 300px; background: #eee; display: flex; align-items: center; justify-content: center; border: 4px dashed #ccc; color: #aaa; font-weight: 800; font-size: 24px;">
+                    STAGE EMPTY
+                </div>
+                <img id="clayImg" class="hidden" alt="Generated Clay" />
+                <video id="finalVideo" class="hidden" playsinline loop controls></video>
+                <div class="guide-steps" id="guideOverlay">
+                   <!-- Visual decorative guide -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script type="module" src="/src/index-multi-model.tsx"></script>
+</body>
+</html>

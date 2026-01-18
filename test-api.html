@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>Testing Backend Connection...</h1>
+    <div id="result"></div>
+    
+    <script>
+        const API_URL = 'http://172.20.10.2:3001';
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Connecting to ' + API_URL + '/api/providers...<br>';
+            
+            try {
+                const response = await fetch(API_URL + '/api/providers');
+                const data = await response.json();
+                
+                resultDiv.innerHTML += '<br>✅ SUCCESS!<br><br>';
+                resultDiv.innerHTML += 'Status: ' + response.status + '<br>';
+                resultDiv.innerHTML += 'Providers: ' + JSON.stringify(data.providers.map(p => p.provider)) + '<br>';
+                resultDiv.innerHTML += '<br>Full response:<br><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML += '<br>❌ ERROR!<br><br>';
+                resultDiv.innerHTML += 'Error: ' + error.message + '<br>';
+                resultDiv.innerHTML += '<br>This means the backend is not accessible from the browser.';
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
