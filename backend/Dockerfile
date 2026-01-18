@@ -1,4 +1,5 @@
-# Multi-stage build for April's Toybox Backend
+# Multi-stage build for April's Spielzeugkasten Backend
+# Minimax AI Image & Video Generation
 
 FROM node:20-alpine AS builder
 
@@ -8,8 +9,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev for TypeScript)
+RUN npm ci
 
 # Copy source code
 COPY src ./src

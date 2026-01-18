@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
-import { appendFileSync } from 'fs';
 import { ProviderFactory } from './providers/index.js';
 import { GenerationRequest } from './types/models.js';
 import { verifySupabaseToken, createAnonymousSession } from './services/supabase.js';
@@ -28,14 +27,6 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Initialize providers
 ProviderFactory.initialize();
-
-// #region agent log
-app.use((req, res, next) => {
-  const logData = JSON.stringify({location:'server.ts:middleware',message:'Request received',data:{method:req.method,url:req.url,path:req.path,baseUrl:req.baseUrl,originalUrl:req.originalUrl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B1,B2'}) + '\n';
-  appendFileSync('/Users/michaelperinwogenburg/Desktop/big challenge/aprils-spielzeugkasten/.cursor/debug.log', logData);
-  next();
-});
-// #endregion
 
 // Health check
 app.get('/health', (req, res) => {
@@ -64,11 +55,6 @@ app.get('/api/providers', (req, res) => {
 
 // Generate image or video
 app.post('/api/generate', async (req, res) => {
-  // #region agent log
-  const logData = JSON.stringify({location:'server.ts:generate-handler',message:'Generate endpoint hit',data:{hasBody:!!req.body,bodyKeys:Object.keys(req.body||{}),provider:req.body?.provider,type:req.body?.type},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B1'}) + '\n';
-  appendFileSync('/Users/michaelperinwogenburg/Desktop/big challenge/aprils-spielzeugkasten/.cursor/debug.log', logData);
-  // #endregion
-  
   try {
     const request: GenerationRequest = req.body;
 
@@ -168,11 +154,8 @@ app.listen(PORT, '0.0.0.0', () => {
       routes.push({path: middleware.route.path, methods: Object.keys(middleware.route.methods)});
     }
   });
-  const logData = JSON.stringify({location:'server.ts:listen',message:'Server started',data:{port:PORT,host:'0.0.0.0',registeredRoutes:routes},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B1,B3'}) + '\n';
-  appendFileSync('/Users/michaelperinwogenburg/Desktop/big challenge/aprils-spielzeugkasten/.cursor/debug.log', logData);
-  // #endregion
   
-  console.log(`\n🚀 April's Toybox Multi-Model Backend`);
+  console.log(`\n🚀 April's Spielzeugkasten Backend (Minimax AI)`);
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`\n Available providers: ${ProviderFactory.getAvailableProviders().join(', ')}`);

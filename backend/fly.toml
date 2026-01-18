@@ -1,10 +1,10 @@
-# Fly.io deployment configuration for April's Toybox Backend
+# Fly.io deployment configuration for April's Spielzeugkasten Backend
+# Minimax AI Image & Video Generation (No Censorship)
 
-app = "aprils-toybox-backend"
-primary_region = "ewr" # Newark, NJ - change to your preferred region
+app = "aprils-spielzeugkasten-backend"
+primary_region = "ewr"
 
 [build]
-  builder = "heroku/buildpacks:20"
 
 [env]
   NODE_ENV = "production"
