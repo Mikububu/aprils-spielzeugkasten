@@ -1,6 +1,6 @@
 // Model provider types
 
-export type ModelProvider = 'google' | 'minimax' | 'runpod' | 'replicate' | 'stability';
+export type ModelProvider = 'google' | 'falai' | 'replicate' | 'openrouter' | 'drive';
 
 export type MediaType = 'image' | 'video';
 
@@ -11,11 +11,14 @@ export interface GenerationRequest {
   aspectRatio?: '1:1' | '16:9' | '9:16';
   negativePrompt?: string;
   style?: string;
-  referenceImages?: ImageReference[];
-  sourceImage?: string; // base64
+  seed?: number;  // For reproducible generation
+  sourceImage?: string; // Single source image (base64)
+  sourceImages?: string[]; // Multiple source images for merge/couple
+  imageMode?: 'merge' | 'couple'; // How to combine multiple images
   sourceMimeType?: string;
   videoConfig?: VideoConfig;
   safetyLevel?: 'minimal' | 'default' | 'strict';
+  uploadToDrive?: boolean; // If true, upload result to Drive and return link
 }
 
 export interface ImageReference {
@@ -37,9 +40,12 @@ export interface GenerationResponse {
   data?: {
     mediaUrl?: string;
     mediaBase64?: string;
+    driveUrl?: string;
+    localPath?: string;
     mimeType: string;
     provider: ModelProvider;
     cost?: number;
+    seed?: number | undefined;  // Echoed back for reproducibility
     metadata?: any;
   };
   error?: string;

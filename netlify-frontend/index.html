@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spielzeugkasten</title>
+  <style>
+    :root { --bg: #111; --panel: #1a1a1a; --accent: #0af; --text: #eee; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .layout { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+    .sidebar { background: var(--panel); padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 16px; }
+    .sidebar h1 { font-size: 20px; margin: 0 0 8px; color: var(--accent); }
+    .sidebar label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+    .sidebar input, .sidebar select, .sidebar textarea { width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 14px; }
+    .sidebar textarea { resize: vertical; min-height: 80px; }
+    .sidebar button { width: 100%; padding: 12px; background: var(--accent); color: #000; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .sidebar button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sidebar button:hover:not(:disabled) { filter: brightness(1.1); }
+    .canvas { display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg); }
+    .placeholder { width: 100%; height: 100%; border: 2px dashed #444; display: flex; align-items: center; justify-content: center; color: #666; font-size: 24px; border-radius: 8px; }
+    .placeholder.has-image { border: none; background-size: contain; background-repeat: no-repeat; background-position: center; }
+    .placeholder.has-image span { display: none; }
+    .output { background: #222; padding: 12px; border-radius: 4px; font-size: 12px; overflow: auto; max-height: 200px; white-space: pre-wrap; word-break: break-all; }
+    .output a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Spielzeugkasten</h1>
+      
+      <div>
+        <label>Provider</label>
+        <select id="provider">
+          <option value="falai">fal.ai (FLUX)</option>
+          <option value="openrouter">OpenRouter (Gemini)</option>
+        </select>
+      </div>
+      
+      <div>
+        <label>Type</label>
+        <select id="type">
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+        </select>
+      </div>
+      
+      <div>
+        <label>Prompt</label>
+        <textarea id="prompt" placeholder="Describe what you want to generate..."></textarea>
+      </div>
+      
+      <div>
+        <label>Source Image (optional)</label>
+        <input type="file" id="sourceImage" accept="image/*">
+      </div>
+      
+      <div>
+        <label>
+          <input type="checkbox" id="uploadToLocal" checked>
+          Save to local folder
+        </label>
+      </div>
+      
+      <button id="generate">GENERATE</button>
+      
+      <div class="output" id="output">Ready to generate...</div>
+    </aside>
+    
+    <main class="canvas">
+      <div class="placeholder" id="preview">
+        <span>READY TO GENERATE</span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const BACKEND = 'https://aprils-spielzeugkasten-backend.fly.dev';
+    const generateBtn = document.getElementById('generate');
+    const output = document.getElementById('output');
+    const preview = document.getElementById('preview');
+    
+    function log(msg) {
+      output.textContent = msg;
+    }
+    
+    function base64ToDataUrl(base64, mimeType) {
+      return `data:${mimeType};base64,${base64}`;
+    }
+    
+    generateBtn.onclick = async () => {
+      const provider = document.getElementById('provider').value;
+      const type = document.getElementById('type').value;
+      const prompt = document.getElementById('prompt').value;
+      const sourceImageFile = document.getElementById('sourceImage').files[0];
+      const uploadToLocal = document.getElementById('uploadToLocal').checked;
+      
+      if (!prompt) {
+        log('Please enter a prompt');
+        return;
+      }
+      
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'GENERATING...';
+      log('Generating...');
+      
+      try {
+        const body = {
+          provider,
+          type,
+          prompt,
+          uploadToDrive: uploadToLocal
+        };
+        
+        if (sourceImageFile) {
+          const reader = new FileReader();
+          body.sourceImage = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(sourceImageFile);
+          });
+        }
+        
+        const res = await fetch(`${BACKEND}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        const data = await res.json();
+        
+        if (data.success && data.data) {
+          let msg = `Generated successfully!\n`;
+          
+          if (data.data.mediaUrl) {
+            msg += `\nMedia URL: ${data.data.mediaUrl}`;
+          }
+          
+          if (data.data.localPath) {
+            msg += `\n\nLocal path: ${data.data.localPath}`;
+            msg += `\n(Click the link above to open)`;
+          }
+          
+          if (data.data.cost) {
+            msg += `\n\nCost: $${data.data.cost}`;
+          }
+          
+          log(msg);
+          
+          // Show image if we have mediaUrl
+          if (data.data.mediaUrl) {
+            preview.style.backgroundImage = `url(${data.data.mediaUrl})`;
+            preview.classList.add('has-image');
+          }
+        } else {
+          log(`Error: ${data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        log(`Error: ${err.message}`);
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'GENERATE';
+      }
+    };
+  </script>
+</body>
+</html>

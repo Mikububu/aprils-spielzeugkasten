@@ -2,11 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import axios from 'axios';
 import { ProviderFactory } from './providers/index.js';
+import { uploadToDrive } from './providers/drive.js';
+import { saveToLocalFolder } from './providers/localfolder.js';
 import { GenerationRequest } from './types/models.js';
-import { verifySupabaseToken, createAnonymousSession } from './services/supabase.js';
 
 dotenv.config();
+
+async function downloadToBase64(url: string): Promise<string> {
+  const response = await axios.get(url, { responseType: 'arraybuffer' });
+  return Buffer.from(response.data).toString('base64');
+}
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -27,6 +34,22 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Initialize providers
 ProviderFactory.initialize();
+
+// Root endpoint - API info
+app.get('/', (req, res) => {
+  res.json({
+    name: "April's Spielzeugkasten API",
+    version: "1.0.0",
+    description: "Free uncensored AI image generation via Replicate",
+    endpoints: {
+      health: "GET /health",
+      providers: "GET /api/providers",
+      generate: "POST /api/generate",
+      upload: "POST /api/upload"
+    },
+    providers: ProviderFactory.getAvailableProviders()
+  });
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -66,18 +89,9 @@ app.post('/api/generate', async (req, res) => {
       });
     }
 
-    // Authenticate via Supabase (or create anonymous session)
-    const authHeader = req.headers.authorization;
-    const authResult = await verifySupabaseToken(authHeader);
-    
-    if (!authResult.valid) {
-      // Create anonymous session for public access (no payment required yet)
-      const anonSession = await createAnonymousSession();
-      (req as any).userId = anonSession.userId;
-      (req as any).sessionId = anonSession.sessionId;
-    } else {
-      (req as any).userId = authResult.userId;
-    }
+    // Create anonymous session for public access
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    (req as any).sessionId = sessionId;
 
     // Get provider
     const provider = ProviderFactory.getProvider(request.provider);
@@ -108,6 +122,40 @@ app.post('/api/generate', async (req, res) => {
         success: false,
         error: 'Invalid type. Must be "image" or "video"'
       });
+    }
+
+    // Save to local folder if requested (instead of Drive)
+    console.log('Local save check:', { success: result.success, hasData: !!result.data, uploadToDrive: request.uploadToDrive });
+    if (result.success && result.data && request.uploadToDrive) {
+      console.log('Saving to local folder...');
+      try {
+        let base64Data = result.data.mediaBase64;
+        console.log('Initial base64Data:', base64Data ? 'exists' : 'undefined');
+        
+        // If provider returned a URL instead of base64, download it first
+        if (!base64Data && result.data.mediaUrl) {
+          console.log('Downloading image from URL...');
+          base64Data = await downloadToBase64(result.data.mediaUrl);
+          console.log('Download complete, base64 length:', base64Data?.length);
+        }
+        
+        if (base64Data) {
+          console.log('Saving to local folder...');
+          const localPath = await saveToLocalFolder(
+            base64Data,
+            result.data.mimeType,
+            request.prompt,
+            request.provider
+          );
+          console.log('Local save complete:', localPath);
+          result.data.localPath = localPath;
+        } else {
+          console.log('No base64 data available for local save');
+        }
+      } catch (saveError: any) {
+        console.error('Local save failed:', saveError.message);
+        // Continue with base64 response if local save fails
+      }
     }
 
     res.json(result);
@@ -147,15 +195,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  // #region agent log
-  const routes: any[] = [];
-  app._router.stack.forEach((middleware: any) => {
-    if (middleware.route) {
-      routes.push({path: middleware.route.path, methods: Object.keys(middleware.route.methods)});
-    }
-  });
-  
-  console.log(`\n🚀 April's Spielzeugkasten Backend (Minimax AI)`);
+  console.log(`\n🚀 April's Spielzeugkasten Backend (Replicate - Free & Uncensored)`);
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`\n Available providers: ${ProviderFactory.getAvailableProviders().join(', ')}`);
