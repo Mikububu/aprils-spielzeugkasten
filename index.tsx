@@ -16,7 +16,8 @@ const PROVIDER_COSTS: Record<string, { image: number; video: number; censored: b
   'google': { image: 0.001, video: 0.05, censored: false },
   'falai': { image: 0.002, video: 0.08, censored: true },
   'openrouter': { image: 0.03, video: 0, censored: false },
-  'replicate': { image: 0.003, video: 0.08, censored: false }
+  'replicate': { image: 0.003, video: 0.08, censored: false },
+  'devstral': { image: 0, video: 0, censored: false }
 };
 
 let sourceImages = { a: null as string | null, b: null as string | null };
