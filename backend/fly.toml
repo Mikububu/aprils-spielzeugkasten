@@ -1,10 +1,11 @@
 # Fly.io deployment configuration for April's Spielzeugkasten Backend
-# Minimax AI Image & Video Generation (No Censorship)
+# Replicate FLUX Image & Video Generation (No Censorship)
 
 app = "aprils-spielzeugkasten-backend"
 primary_region = "ewr"
 
 [build]
+dockerfile = "Dockerfile"
 
 [env]
   NODE_ENV = "production"

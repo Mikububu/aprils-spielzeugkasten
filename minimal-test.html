@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Test</title>
+</head>
+<body>
+    <h1>Minimal API Test</h1>
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testGenerate()">Test Generate</button>
+    <div id="result"></div>
+
+    <script>
+        async function testHealth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing health endpoint...\n\n';
+
+            try {
+                const response = await fetch('https://aprils-spielzeugkasten-backend.fly.dev/health');
+                const text = await response.text();
+                resultDiv.innerHTML += `Status: ${response.status}\n`;
+                resultDiv.innerHTML += `Response: ${text}\n`;
+            } catch (error) {
+                resultDiv.innerHTML += `Error: ${error.message}\n`;
+            }
+        }
+
+        async function testGenerate() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing generate endpoint...\n\n';
+
+            try {
+                const response = await fetch('https://aprils-spielzeugkasten-backend.fly.dev/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        provider: 'minimax',
+                        type: 'image',
+                        prompt: 'test',
+                        aspectRatio: '1:1'
+                    })
+                });
+                
+                resultDiv.innerHTML += `Status: ${response.status} ${response.statusText}\n`;
+                
+                if (response.ok) {
+                    resultDiv.innerHTML += `✅ Success - Response received\n`;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML += `❌ Error: ${errorText}\n`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `❌ Fetch Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

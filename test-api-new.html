@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test April's Spielzeugkasten API</title>
+</head>
+<body>
+    <h1>Test API Call</h1>
+    <button onclick="testAPI()">Test API Call</button>
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'https://aprils-spielzeugkasten-backend.fly.dev';
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing API call to ' + API_URL + '/api/generate...<br><br>';
+
+            try {
+                const response = await fetch(API_URL + '/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        provider: 'minimax',
+                        type: 'image',
+                        prompt: 'a red ball',
+                        aspectRatio: '1:1'
+                    })
+                });
+
+                resultDiv.innerHTML += 'Response status: ' + response.status + ' ' + response.statusText + '<br>';
+                resultDiv.innerHTML += 'Response headers:<br><pre>' + [...response.headers.entries()].map(([k,v]) => k + ': ' + v).join('\n') + '</pre><br>';
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML += '❌ Error response body:<br><pre>' + errorText + '</pre>';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    resultDiv.innerHTML += '✅ Success! Generated image (' + (data.data?.mediaBase64?.length || 0) + ' chars)';
+                } else {
+                    resultDiv.innerHTML += '❌ API Error: ' + data.error;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += '❌ Fetch Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

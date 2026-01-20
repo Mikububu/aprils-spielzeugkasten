@@ -1,6 +1,6 @@
 // Model provider types
 
-export type ModelProvider = 'google' | 'falai' | 'replicate' | 'openrouter' | 'drive';
+export type ModelProvider = 'google' | 'falai' | 'replicate' | 'openrouter' | 'drive' | 'devstral';
 
 export type MediaType = 'image' | 'video';
 

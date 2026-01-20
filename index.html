@@ -371,13 +371,36 @@
             </div>
             
             <div class="neo-block">
+                <div class="label">Step 0: Select Provider</div>
+                <select id="providerSelector" class="neo-input" style="font-size: 14px; font-weight: 800;">
+                    <option value="google">🌐 Google (Veo 3) - Fast, High Quality</option>
+                    <option value="falai">🎨 fal.ai (SDXL) - Good Balance</option>
+                    <option value="openrouter">⚡ OpenRouter (FLUX.2 Pro) - NO CENSORSHIP</option>
+                    <option value="replicate">🔓 Replicate (FLUX) - Fully Uncensored</option>
+                </select>
+                <div id="providerInfo" style="font-size: 10px; margin-top: 4px; color: #666;">
+                    <span id="providerCost">Cost: ~$0.001/image</span> • 
+                    <span id="providerCensored">Censored: No</span>
+                </div>
+            </div>
+
+            <div class="neo-block">
+                <div class="label">Step 0b: Seed (Reproducible Results)</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" id="seedInput" class="neo-input" placeholder="SEED" style="flex: 1; text-align: center; font-size: 14px;" min="0" max="999999">
+                    <input type="range" id="seedSlider" min="0" max="999999" value="0" style="flex: 2; height: 30px;">
+                </div>
+                <button class="sub-action" id="randomSeedBtn" style="margin-top: 4px; padding: 8px;">🎲 RANDOM SEED</button>
+            </div>
+
+            <div class="neo-block">
                 <div class="account-stats">
                     <div class="stat-box">
                         <span class="stat-val" id="sessionCostDisplay">$0.00</span>
                         <span class="stat-lbl">SESSION COST (EST)</span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-val" style="color: var(--green);">MINIMAX</span>
+                        <span class="stat-val" id="selectedProviderDisplay" style="color: var(--cyan);">GOOGLE</span>
                         <span class="stat-lbl">PROVIDER</span>
                     </div>
                 </div>

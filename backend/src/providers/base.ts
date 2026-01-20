@@ -29,8 +29,8 @@ export abstract class BaseModelProvider {
     if (request.sourceImage && request.type === 'video' && !this.capabilities.supportsImageToVideo) {
       return { valid: false, error: 'Provider does not support image-to-video' };
     }
-    if (request.referenceImages && request.referenceImages.length > 1 && !this.capabilities.supportsMultipleImages) {
-      return { valid: false, error: 'Provider does not support multiple reference images' };
+    if (request.sourceImages && request.sourceImages.length > 1 && !this.capabilities.supportsMultipleImages) {
+      return { valid: false, error: 'Provider does not support multiple source images' };
     }
     return { valid: true };
   }

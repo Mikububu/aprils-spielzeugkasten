@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Connection</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Test April's Spielzeugkasten API</h1>
+    <p>API URL: <strong>https://aprils-spielzeugkasten-backend.fly.dev</strong></p>
+    <button onclick="testAPI()">Test Generate Image</button>
+    <button onclick="testHealth()">Test Health Check</button>
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'https://aprils-spielzeugkasten-backend.fly.dev';
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '🔄 Testing API call...\n\n';
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch(API_URL + '/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        provider: 'minimax',
+                        type: 'image',
+                        prompt: 'a red ball',
+                        aspectRatio: '1:1'
+                    })
+                });
+
+                const endTime = Date.now();
+                resultDiv.innerHTML += `⏱️ Response time: ${endTime - startTime}ms\n`;
+                resultDiv.innerHTML += `📊 Status: ${response.status} ${response.statusText}\n`;
+
+                // Show headers
+                resultDiv.innerHTML += `📋 Headers:\n`;
+                for (let [key, value] of response.headers.entries()) {
+                    resultDiv.innerHTML += `  ${key}: ${value}\n`;
+                }
+                resultDiv.innerHTML += `\n`;
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML += `❌ Error response:\n${errorText}\n`;
+                    return;
+                }
+
+                const data = await response.json();
+                resultDiv.innerHTML += `✅ API Response:\n`;
+                resultDiv.innerHTML += `Success: ${data.success}\n`;
+
+                if (data.success && data.data) {
+                    resultDiv.innerHTML += `Image size: ${data.data.mediaBase64?.length || 0} characters\n`;
+                    resultDiv.innerHTML += `MIME type: ${data.data.mimeType}\n`;
+                    resultDiv.innerHTML += `Cost: $${data.data.cost}\n`;
+                } else {
+                    resultDiv.innerHTML += `Error: ${data.error}\n`;
+                }
+
+            } catch (error) {
+                resultDiv.innerHTML += `❌ Fetch Error: ${error.message}\n`;
+                if (error.name === 'TypeError') {
+                    resultDiv.innerHTML += `💡 This usually means CORS or network error\n`;
+                }
+                console.error('Full error:', error);
+            }
+        }
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '🔄 Testing health check...\n\n';
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch(API_URL + '/health');
+
+                const endTime = Date.now();
+                resultDiv.innerHTML += `⏱️ Response time: ${endTime - startTime}ms\n`;
+                resultDiv.innerHTML += `📊 Status: ${response.status} ${response.statusText}\n`;
+
+                const data = await response.json();
+                resultDiv.innerHTML += `✅ Health check response:\n${JSON.stringify(data, null, 2)}\n`;
+
+            } catch (error) {
+                resultDiv.innerHTML += `❌ Health check error: ${error.message}\n`;
+                console.error('Health check error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

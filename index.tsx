@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+console.log('API_URL:', API_URL);
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yvlxhcvvwxvfakguldlp.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2bHhoY3Z3eHZ3ZmFrZ3VkbGRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MTk5MzMsImV4cCI6MjA4MTI5NTkzM30.WdQHR8aO_qX6qUm8kN3t6Xq5sVlXxJRX12Pfpospn-7jbP9Z7pHwld_BJXKkhrESFo6ItmDw';
@@ -11,8 +12,12 @@ const DB_NAME = 'AprilsSpielzeugkastenDB';
 const DB_STORE = 'gallery';
 const DB_VERSION = 1;
 
-const COST_IMAGE = 0.02;
-const COST_VIDEO = 0.15;
+const PROVIDER_COSTS: Record<string, { image: number; video: number; censored: boolean }> = {
+  'google': { image: 0.001, video: 0.05, censored: false },
+  'falai': { image: 0.002, video: 0.08, censored: true },
+  'openrouter': { image: 0.03, video: 0, censored: false },
+  'replicate': { image: 0.003, video: 0.08, censored: false }
+};
 
 let sourceImages = { a: null as string | null, b: null as string | null };
 let sourceMimes = { a: null as string | null, b: null as string | null };
@@ -24,6 +29,8 @@ let generatedBase64: string | null = null;
 let generatedMimeType: string = 'image/png';
 let selectedAspect = '16:9';
 let selectedStyle = 'REALISTIC';
+let selectedProvider = 'google';
+let selectedSeed: number | undefined = undefined;
 let gallery: Array<any> = [];
 
 let sessionCost = 0.00;
@@ -93,7 +100,6 @@ const els = {
   placeholder: document.getElementById('placeholder') as HTMLElement,
   actionInput: document.getElementById('actionInput') as HTMLInputElement,
   animateBtn: document.getElementById('animateBtn') as HTMLButtonElement,
-  animBlock: document.getElementById('animBlock'),
   animHint: document.getElementById('animHint'),
   loadingTitle: document.getElementById('loadingTitle'),
   artboardOverlay: document.getElementById('artboardOverlay'),
@@ -110,12 +116,35 @@ const els = {
   imgCostLabel: document.getElementById('imgCostLabel'),
   vidCostLabel: document.getElementById('vidCostLabel'),
   toggleAudio: document.getElementById('toggleAudio'),
+  providerSelector: document.getElementById('providerSelector') as HTMLSelectElement,
+  providerCost: document.getElementById('providerCost'),
+  providerCensored: document.getElementById('providerCensored'),
+  selectedProviderDisplay: document.getElementById('selectedProviderDisplay'),
+  seedInput: document.getElementById('seedInput') as HTMLInputElement,
+  seedSlider: document.getElementById('seedSlider') as HTMLInputElement,
+  randomSeedBtn: document.getElementById('randomSeedBtn') as HTMLButtonElement,
 };
 
-const providerBadge = document.createElement('div');
-providerBadge.style.cssText = "position:absolute; top:10px; right:10px; background:var(--black); color:var(--cyan); font-size:10px; padding:4px 8px; font-weight:800; border:1px solid var(--cyan); z-index:50;";
-providerBadge.innerText = "PROVIDER: MINIMAX (UNCENSORED)";
-if (els.placeholder) els.placeholder.parentElement?.appendChild(providerBadge);
+function updateProviderDisplay() {
+  const providerInfo = PROVIDER_COSTS[selectedProvider];
+  if (els.providerCost) {
+    els.providerCost.textContent = `Cost: ~$${providerInfo.image.toFixed(3)}/img`;
+  }
+  if (els.providerCensored) {
+    els.providerCensored.textContent = `Censored: ${providerInfo.censored ? 'Yes' : 'No'}`;
+    els.providerCensored.style.color = providerInfo.censored ? 'var(--red)' : 'var(--green)';
+  }
+  if (els.selectedProviderDisplay) {
+    els.selectedProviderDisplay.textContent = selectedProvider.toUpperCase();
+    els.selectedProviderDisplay.style.color = providerInfo.censored ? 'var(--yellow)' : 'var(--cyan)';
+  }
+  if (els.imgCostLabel) {
+    els.imgCostLabel.textContent = `(EST. ~$${providerInfo.image.toFixed(3)})`;
+  }
+  if (els.vidCostLabel && providerInfo.video > 0) {
+    els.vidCostLabel.textContent = `(EST. ~$${providerInfo.video.toFixed(2)})`;
+  }
+}
 
 function addCost(amount: number) {
   sessionCost += amount;
@@ -124,18 +153,32 @@ function addCost(amount: number) {
   }
 }
 
-if (els.toggleAudio) {
-  els.toggleAudio.addEventListener('click', () => {
-    isAudioMuted = !isAudioMuted;
-    if (isAudioMuted) {
-      els.toggleAudio?.classList.add('active');
-      els.toggleAudio!.innerHTML = `AUDIO: MUTED<br><span style="font-size: 8px;">(DEFAULT)</span>`;
-      if (els.finalVideo) els.finalVideo.muted = true;
-    } else {
-      els.toggleAudio?.classList.remove('active');
-      els.toggleAudio!.innerHTML = `AUDIO: ON<br><span style="font-size: 8px;">(EXPERIMENTAL)</span>`;
-      if (els.finalVideo) els.finalVideo.muted = false;
-    }
+if (els.providerSelector) {
+  els.providerSelector.addEventListener('change', (e) => {
+    selectedProvider = (e.target as HTMLSelectElement).value;
+    updateProviderDisplay();
+  });
+}
+
+if (els.seedSlider && els.seedInput) {
+  els.seedSlider.addEventListener('input', (e) => {
+    const value = (e.target as HTMLInputElement).value;
+    els.seedInput.value = value;
+    selectedSeed = parseInt(value) || undefined;
+  });
+  els.seedInput.addEventListener('input', (e) => {
+    const value = (e.target as HTMLInputElement).value;
+    els.seedSlider.value = value;
+    selectedSeed = parseInt(value) || undefined;
+  });
+}
+
+if (els.randomSeedBtn) {
+  els.randomSeedBtn.addEventListener('click', () => {
+    const randomSeed = Math.floor(Math.random() * 999999);
+    if (els.seedInput) els.seedInput.value = randomSeed.toString();
+    if (els.seedSlider) els.seedSlider.value = randomSeed.toString();
+    selectedSeed = randomSeed;
   });
 }
 
@@ -268,9 +311,10 @@ function setBusy(busy: boolean, text: string = "PROCESSING...", title: string = 
 }
 
 function updateAnimSection() {
+  const providerInfo = PROVIDER_COSTS[selectedProvider];
   if (generatedBase64) {
     els.animateBtn.childNodes[0].nodeValue = "VIDEO_FROM_IMAGE";
-    if (els.animHint) els.animHint.textContent = "IMG-TO-VIDEO: USING GENERATED IMAGE";
+    if (els.animHint) els.animHint.textContent = `IMG-TO-VIDEO: ${selectedProvider.toUpperCase()}`;
     if (els.animHint) (els.animHint as HTMLElement).style.color = "var(--green)";
   } else if (sourceImages.a && sourceImages.b) {
     els.animateBtn.childNodes[0].nodeValue = `VIDEO_FROM_A_&_B (${mergeMode.toUpperCase()})`;
@@ -278,28 +322,27 @@ function updateAnimSection() {
     if (els.animHint) (els.animHint as HTMLElement).style.color = "var(--cyan)";
   } else if (sourceImages.a) {
     els.animateBtn.childNodes[0].nodeValue = "VIDEO_FROM_IMG_A";
-    if (els.animHint) els.animHint.textContent = "IMG-TO-VIDEO: USING SOURCE A";
+    if (els.animHint) els.animHint.textContent = `IMG-TO-VIDEO: ${selectedProvider.toUpperCase()}`;
     if (els.animHint) (els.animHint as HTMLElement).style.color = "var(--cyan)";
   } else if (sourceImages.b) {
     els.animateBtn.childNodes[0].nodeValue = "VIDEO_FROM_IMG_B";
-    if (els.animHint) els.animHint.textContent = "IMG-TO-VIDEO: USING SOURCE B";
+    if (els.animHint) els.animHint.textContent = `IMG-TO-VIDEO: ${selectedProvider.toUpperCase()}`;
     if (els.animHint) (els.animHint as HTMLElement).style.color = "var(--cyan)";
   } else {
-    els.animateBtn.childNodes[0].nodeValue = "GENERATE_IMAGE";
-    if (els.animHint) els.animHint.textContent = "TEXT-TO-IMAGE: MINIMAX AI";
+    els.animateBtn.childNodes[0].nodeValue = providerInfo.video > 0 ? "GENERATE_VIDEO" : "NO_VIDEO_SUPPORT";
+    if (els.animHint) els.animHint.textContent = providerInfo.video > 0 ? `TEXT-TO-VIDEO: ${selectedProvider.toUpperCase()}` : "VIDEO NOT SUPPORTED";
     if (els.animHint) (els.animHint as HTMLElement).style.color = "var(--yellow)";
   }
+  els.animateBtn.disabled = providerInfo.video === 0;
 }
 
 function updateSlotUI(slot: 'a' | 'b') {
   const el = slot === 'a' ? els.slotA : els.slotB;
   const removeBtn = slot === 'a' ? els.removeA : els.removeB;
   const data = sourceImages[slot];
-  console.log('updateSlotUI:', slot, 'has data:', !!data, 'el:', !!el);
-
+  
   if (data && el) {
     const dataUrl = `data:image/png;base64,${data}`;
-    console.log('Setting background image, data length:', data.length);
     el.style.backgroundImage = `url(${dataUrl})`;
     el.classList.add('has-img');
     const label = el.querySelector('.slot-label');
@@ -463,7 +506,9 @@ async function addToGallery(type: 'image' | 'video', url: string, base64?: strin
     style: selectedStyle,
     aspect: selectedAspect,
     base64: base64ToStore,
-    thumbnail
+    thumbnail,
+    provider: selectedProvider,
+    seed: selectedSeed
   };
   const memoryItem = { ...item, url: url };
   gallery.unshift(memoryItem);
@@ -576,7 +621,6 @@ els.slotB!.addEventListener('click', (e) => {
 });
 
 function handleFileSelect(file: File, slot: 'a' | 'b') {
-  console.log('handleFileSelect called:', slot, file.name);
   if (!file.type.startsWith('image/')) {
     alert("ONLY IMAGE FILES ALLOWED!");
     return;
@@ -584,14 +628,12 @@ function handleFileSelect(file: File, slot: 'a' | 'b') {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const result = ev.target?.result as string;
-    console.log('File loaded, result length:', result.length);
     generatedBase64 = null;
     els.finalImg.classList.add('hidden');
     els.finalVideo.classList.add('hidden');
     els.placeholder!.classList.remove('hidden');
     const img = new Image();
     img.onload = () => {
-      console.log('Image loaded, dimensions:', img.width, img.height);
       const ratio = img.width / img.height;
       let newAspect = '1:1';
       if (ratio > 1.2) newAspect = '16:9';
@@ -602,7 +644,6 @@ function handleFileSelect(file: File, slot: 'a' | 'b') {
     const mime = result.match(/data:([^;]+);/)?.[1] || 'image/png';
     sourceMimes[slot] = mime;
     sourceImages[slot] = result.split(',')[1];
-    console.log('Calling updateSlotUI for slot:', slot);
     updateSlotUI(slot);
     updateAnimSection();
   };
@@ -655,66 +696,91 @@ els.fileInput.addEventListener('change', (e) => {
 els.generateBtn!.addEventListener('click', async () => {
   const userPrompt = els.promptInput.value.trim();
   const hasSourceImage = sourceImages.a || sourceImages.b;
+  const selectedStylePrompt = selectedStyle !== 'NONE' ? styleConfig[selectedStyle] || '' : '';
   
   if (!userPrompt && !hasSourceImage) {
     alert("PLEASE ENTER A PROMPT OR UPLOAD A SOURCE IMAGE!");
     return;
   }
   
-  setBusy(true, "GENERATING IMAGE...", "MINIMAX AI");
-  addCost(COST_IMAGE);
+  let finalPrompt = '';
+  if (hasSourceImage && selectedStyle !== 'NONE') {
+    finalPrompt = selectedStylePrompt;
+  } else if (hasSourceImage && selectedStyle === 'NONE') {
+    finalPrompt = userPrompt || 'transform this image';
+  } else {
+    finalPrompt = userPrompt;
+    if (selectedStylePrompt) {
+      finalPrompt += '. ' + selectedStylePrompt;
+    }
+  }
+
+  const providerInfo = PROVIDER_COSTS[selectedProvider];
+  setBusy(true, "GENERATING IMAGE...", selectedProvider.toUpperCase());
+  addCost(providerInfo.image);
+  
   try {
-    const stylePrompt = styleConfig[selectedStyle] || '';
-    const promptForApi = userPrompt || (hasSourceImage ? "Transform this image" : "Generate an image");
-    const fullPrompt = selectedStyle !== 'NONE' ? `${promptForApi}. ${stylePrompt}` : promptForApi;
     const aspectRatio = selectedAspect === '16:9' ? '16:9' : selectedAspect === '9:16' ? '9:16' : '1:1';
+
+    const apiPayload: any = {
+      provider: selectedProvider,
+      type: 'image',
+      prompt: finalPrompt,
+      aspectRatio: aspectRatio
+    };
     
-    const sourceImage = sourceImages.a || sourceImages.b || undefined;
-    console.log('Generate request:', { provider: 'minimax', type: 'image', prompt: fullPrompt.substring(0, 50), aspectRatio, hasSourceImage: !!sourceImage, sourceImageLength: sourceImage?.length });
+    if (selectedSeed) {
+      apiPayload.seed = selectedSeed;
+    }
+    
+    if (hasSourceImage) {
+      apiPayload.sourceImage = sourceImages.a || sourceImages.b;
+    }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-    const response = await fetch(`${API_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        provider: 'minimax',
-        type: 'image',
-        prompt: fullPrompt,
-        aspectRatio: aspectRatio,
-        sourceImage: sourceImages.a || sourceImages.b || undefined
-      }),
-      signal: controller.signal
-    });
+    try {
+      const response = await fetch(`${API_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(apiPayload),
+        signal: controller.signal
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+      
+      const result = await response.json();
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.success && result.data) {
-      generatedBase64 = result.data.mediaBase64;
-      generatedMimeType = result.data.mimeType || 'image/png';
-      finalizeImage(generatedBase64, generatedMimeType, promptForApi);
-    } else {
-      throw new Error(result.error || 'Generation failed');
+      if (result.success && result.data) {
+        generatedBase64 = result.data.mediaBase64;
+        generatedMimeType = result.data.mimeType || 'image/png';
+        finalizeImage(generatedBase64, generatedMimeType, finalPrompt);
+      } else {
+        throw new Error(result.error || 'Generation failed');
+      }
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      console.error("Image Error:", e);
+      if (e.name === 'AbortError') {
+        alert("IMAGE_ERROR: Request timed out after 120 seconds");
+      } else {
+        alert("IMAGE_ERROR: " + e.message);
+      }
+    } finally {
+      setBusy(false);
     }
   } catch (e: any) {
-    console.error("Image Error:", e);
-    if (e.name === 'AbortError') {
-      alert("IMAGE_ERROR: Request timed out after 60 seconds");
-    } else {
-      alert("IMAGE_ERROR: " + e.message);
-    }
-  } finally {
+    console.error("Generate error:", e);
+    alert("IMAGE_ERROR: " + e.message);
     setBusy(false);
   }
 });
@@ -731,12 +797,21 @@ function finalizeImage(base64: string, mime: string, prompt: string) {
 
 els.animateBtn!.addEventListener('click', async () => {
   const action = els.actionInput.value.trim();
+  const providerInfo = PROVIDER_COSTS[selectedProvider];
+  
+  if (providerInfo.video === 0) {
+    alert(`VIDEO NOT SUPPORTED BY ${selectedProvider.toUpperCase()}. PLEASE SELECT A DIFFERENT PROVIDER.`);
+    return;
+  }
+  
   if (!action && !generatedBase64 && !sourceImages.a && !sourceImages.b) {
     alert("PLEASE ENTER A PROMPT OR UPLOAD A SOURCE IMAGE!");
     return;
   }
-  setBusy(true, "GENERATING VIDEO...", "MINIMAX AI");
-  addCost(COST_VIDEO);
+  
+  setBusy(true, "GENERATING VIDEO...", selectedProvider.toUpperCase());
+  addCost(providerInfo.video);
+  
   try {
     const source = generatedBase64 || sourceImages.a || sourceImages.b;
     const aspectRatio = selectedAspect === '9:16' ? '9:16' : '16:9';
@@ -745,7 +820,7 @@ els.animateBtn!.addEventListener('click', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        provider: 'minimax',
+        provider: selectedProvider,
         type: 'video',
         prompt: action || "Animate this naturally",
         aspectRatio: aspectRatio,
@@ -775,6 +850,7 @@ els.animateBtn!.addEventListener('click', async () => {
   }
 });
 
+updateProviderDisplay();
 renderStyles();
 updateStyleEditor();
 updateAnimSection();
