@@ -276,4 +276,11 @@ export class GoogleProvider extends BaseModelProvider {
       return null;
     }
   }
+
+  async generateText(request: GenerationRequest): Promise<GenerationResponse> {
+    return {
+      success: false,
+      error: 'Google provider does not support text generation. Use Devstral 2 for coding tasks.'
+    };
+  }
 }

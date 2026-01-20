@@ -259,4 +259,11 @@ export class FalAIProvider extends BaseModelProvider {
     const videos = data.videos || data.video || data.output || [];
     return Array.isArray(videos) ? videos : [];
   }
+
+  async generateText(request: GenerationRequest): Promise<GenerationResponse> {
+    return {
+      success: false,
+      error: 'fal.ai does not support text generation. Use Devstral 2 for coding tasks.'
+    };
+  }
 }

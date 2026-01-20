@@ -269,4 +269,11 @@ export class ReplicateProvider extends BaseModelProvider {
       default: return '1:1';
     }
   }
+
+  async generateText(request: GenerationRequest): Promise<GenerationResponse> {
+    return {
+      success: false,
+      error: 'Replicate provider does not support text generation. Use Devstral 2 for coding tasks.'
+    };
+  }
 }

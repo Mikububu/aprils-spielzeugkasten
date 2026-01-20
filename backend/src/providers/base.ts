@@ -11,6 +11,7 @@ export abstract class BaseModelProvider {
 
   abstract generateImage(request: GenerationRequest): Promise<GenerationResponse>;
   abstract generateVideo(request: GenerationRequest): Promise<GenerationResponse>;
+  abstract generateText(request: GenerationRequest): Promise<GenerationResponse>;
   
   getCapabilities(): ModelCapabilities {
     return this.capabilities;
@@ -22,6 +23,9 @@ export abstract class BaseModelProvider {
     }
     if (request.type === 'video' && !this.capabilities.supportsVideo) {
       return { valid: false, error: 'Provider does not support video generation' };
+    }
+    if (request.type === 'text' && this.capabilities.provider !== 'devstral') {
+      return { valid: false, error: 'Provider does not support text generation' };
     }
     if (request.sourceImage && request.type === 'image' && !this.capabilities.supportsImageToImage) {
       return { valid: false, error: 'Provider does not support image-to-image' };

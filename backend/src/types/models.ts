@@ -2,7 +2,7 @@
 
 export type ModelProvider = 'google' | 'falai' | 'replicate' | 'openrouter' | 'drive' | 'devstral';
 
-export type MediaType = 'image' | 'video';
+export type MediaType = 'image' | 'video' | 'text';
 
 export interface GenerationRequest {
   prompt: string;

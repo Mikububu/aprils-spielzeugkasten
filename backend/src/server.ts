@@ -117,10 +117,12 @@ app.post('/api/generate', async (req, res) => {
       result = await provider.generateImage(request);
     } else if (request.type === 'video') {
       result = await provider.generateVideo(request);
+    } else if (request.type === 'text') {
+      result = await provider.generateText(request);
     } else {
       return res.status(400).json({
         success: false,
-        error: 'Invalid type. Must be "image" or "video"'
+        error: 'Invalid type. Must be "image", "video", or "text"'
       });
     }
 

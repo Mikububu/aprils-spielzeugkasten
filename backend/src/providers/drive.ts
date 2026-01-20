@@ -72,6 +72,10 @@ export class DriveStorageProvider extends BaseModelProvider {
   async generateVideo(request: GenerationRequest): Promise<GenerationResponse> {
     return { success: false, error: 'DriveStorageProvider is for storage only. Use fal.ai or other providers for generation.' };
   }
+
+  async generateText(request: GenerationRequest): Promise<GenerationResponse> {
+    return { success: false, error: 'DriveStorageProvider is for storage only. Use Devstral 2 for coding tasks.' };
+  }
 }
 
 export async function uploadToDrive(base64Data: string, mimeType: string, prompt: string, provider: string): Promise<string> {
