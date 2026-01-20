@@ -27,7 +27,33 @@ export class DevstralProvider extends BaseModelProvider {
     this.apiKey = config.apiKey;
   }
 
-  async generateText(prompt: string): Promise<string> {
+  async generateText(request: GenerationRequest): Promise<GenerationResponse> {
+    try {
+      const textResponse = await this.callDevstralAPI(request.prompt);
+      
+      return {
+        success: true,
+        data: {
+          mediaUrl: undefined,
+          mediaBase64: undefined,
+          mimeType: 'text/plain',
+          provider: 'devstral',
+          cost: 0,
+          metadata: {
+            textResponse,
+            note: 'Devstral is a text-only coding model.'
+          }
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Devstral 2 generation failed'
+      };
+    }
+  }
+
+  private async callDevstralAPI(prompt: string): Promise<string> {
     const endpoint = `${this.baseUrl}/chat/completions`;
 
     const headers = {
@@ -74,29 +100,7 @@ export class DevstralProvider extends BaseModelProvider {
   }
 
   async generateImage(request: GenerationRequest): Promise<GenerationResponse> {
-    try {
-      const textResponse = await this.generateText(request.prompt);
-      
-      return {
-        success: true,
-        data: {
-          mediaUrl: undefined,
-          mediaBase64: undefined,
-          mimeType: 'text/plain',
-          provider: 'devstral',
-          cost: 0,
-          metadata: {
-            textResponse,
-            note: 'Devstral is a text-only coding model. Use the text response for coding tasks.'
-          }
-        }
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Devstral 2 generation failed'
-      };
-    }
+    return await this.generateText(request);
   }
 
   async generateVideo(request: GenerationRequest): Promise<GenerationResponse> {
